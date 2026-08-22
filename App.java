@@ -6,6 +6,10 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.time.LocalDate;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+
 class Livro {
   int id;
   String isbn;
@@ -20,9 +24,10 @@ class Livro {
 
   }
 
-  public Livro(int id, String isbn, String autor, LocalDate data, String generos, float preco, short paginas) {
+  public Livro(int id, String isbn, String titulo, String autor, LocalDate data, String generos, float preco, short paginas) {
     setid(id);
     setIsbn(isbn);
+    setTitulo(titulo);
     setAutor(autor);
     setData(data);
     setGeneros(generos);
@@ -95,8 +100,65 @@ class Livro {
   }
 
   public void exibirDetalhes() {
-    System.out.printf("%d", this.id);
+    System.out.println("ID: " + id);
+    System.out.println("ISBN: " + isbn);
+    System.out.println("Titulo: " + titulo);
+    System.out.println("Autor: " + autor);
+    System.out.println("Data: " + data);
+    System.out.println("Generos: " + generos);
+    System.out.println("Preco: " + preco);
+    System.out.println("Paginas: " + paginas);
+    System.out.println("-------------------------");
   }
+
+  public byte[] toByteArray() throws IOException{ //livro -> bytes
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        DataOutputStream dos = new DataOutputStream(baos);
+        
+        dos.writeInt(id);
+
+        for(int i=0;i<13;i++){ //isbn = string de tamanho fixo de 13 char, por isso nao pode usar o writeUTF
+            dos.writeByte(isbn.charAt(i));
+        }
+        
+        dos.writeUTF(titulo);
+        dos.writeUTF(autor);
+        dos.writeLong(data.toEpochDay());
+
+        dos.writeUTF(generos);
+        dos.writeFloat(preco);    
+        dos.writeShort(paginas);
+
+        dos.flush();
+
+        return baos.toByteArray(); //retorna array de bytes
+  }     
+   
+    public void fromByteArray(byte[] bytes)throws IOException{ //bytes escritos -> recupera livro
+        ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+        DataInputStream dis = new DataInputStream(bais);
+        //leitura na mesma ordem da escrita
+        id=dis.readInt();
+        
+        StringBuilder novoIsbn = new StringBuilder();
+
+        for(int i=0; i<13; i++){ //reconstrução do isbn
+            novoIsbn.append((char) dis.readByte());
+        }
+        
+        isbn=novoIsbn.toString();
+        
+        titulo=dis.readUTF();
+        autor=dis.readUTF();
+        
+        data = LocalDate.ofEpochDay(dis.readLong());
+        generos=dis.readUTF();
+        
+        preco=dis.readFloat();
+        paginas=dis.readShort();
+    }    
+    
+
 }
 
 class CSV {
@@ -122,6 +184,14 @@ class App {
           livro.setGeneros(dados[5]);
           livro.setPreco(Float.parseFloat(dados[6]));
           livro.setPaginas(Short.parseShort(dados[7]));
+          
+          //testes livro <->bytes
+          byte[] bytes = livro.toByteArray();
+
+          Livro livroRecuperado = new Livro();
+          livroRecuperado.fromByteArray(bytes);
+            
+          livroRecuperado.exibirDetalhes();
 
         } catch (InputMismatchException e) {
           System.out.println("Entrada fornecida incompatível com seu tipo!");
