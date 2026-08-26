@@ -182,18 +182,23 @@ class Livro {
 
 }
 
-class CSV {
+class BinaryRecordManager {
+  String FILE;
 
-}
+  public BinaryRecordManager() {
 
-class App {
-  public static void main(String args[]) {
-    File arqCsv = new File("base_livros.csv");
-    File arqBin = new File("test.bin");
+  }
+
+  public BinaryRecordManager(String f) {
+    FILE = f;
+  }
+
+  public void create(File csv) {
+    File arquivoBinario = new File(FILE);
     final byte PRIMEIRO_ID = 0;
 
-    try (Scanner s = new Scanner(arqCsv);
-        RandomAccessFile raf = new RandomAccessFile(arqBin, "rw")) {
+    try (Scanner s = new Scanner(csv);
+        RandomAccessFile raf = new RandomAccessFile(arquivoBinario, "rw")) {
 
       if (raf.length() == 0) {
         raf.writeInt(PRIMEIRO_ID);
@@ -229,9 +234,6 @@ class App {
           // testes livro <->bytes
           byte[] bytes = livro.toByteArray();
 
-          Livro livroRecuperado = new Livro();
-          livroRecuperado.fromByteArray(bytes);
-
           raf.writeInt(bytes.length);
           raf.write(bytes);
 
@@ -242,10 +244,20 @@ class App {
 
       raf.seek(0);
       raf.writeInt(ultimoId);
+
       System.out.println("Arquivo gravado com sucesso! Último ID: " + ultimoId);
 
     } catch (IOException e) {
       e.printStackTrace();
     }
+  }
+}
+
+class App {
+  public static void main(String args[]) {
+    BinaryRecordManager manager = new BinaryRecordManager("test.bin");
+    File csv = new File("base_livros.csv");
+
+    manager.create(csv);
   }
 }
