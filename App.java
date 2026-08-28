@@ -1,6 +1,7 @@
 import java.util.*;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -193,12 +194,20 @@ class BinaryRecordManager {
     FILE = f;
   }
 
+  /*
+   * Estrutura do arquivo
+   * r_i é um resgistro de tamanho variável
+   * [Id do Ultimo registro][r_1][r_2][...][r_n]
+   */
+
   public void create(File csv) {
     File arquivoBinario = new File(FILE);
-    final byte PRIMEIRO_ID = 0;
+    final int PRIMEIRO_ID = 0;
 
     try (Scanner s = new Scanner(csv);
         RandomAccessFile raf = new RandomAccessFile(arquivoBinario, "rw")) {
+
+      raf.setLength(0);
 
       if (raf.length() == 0) {
         raf.writeInt(PRIMEIRO_ID);
@@ -210,7 +219,9 @@ class BinaryRecordManager {
         s.nextLine();
       }
 
-      while (s.hasNextLine()) {
+      int i = 0;
+
+      while (i < 100 && s.hasNextLine()) {
         String linha = s.nextLine();
         try {
           String[] dados = linha.split(",");
@@ -237,6 +248,7 @@ class BinaryRecordManager {
           raf.writeInt(bytes.length);
           raf.write(bytes);
 
+          i++;
         } catch (Exception e) {
           System.err.println("Erro ao processar linha: " + linha + " -> " + e.getMessage());
         }
@@ -245,19 +257,78 @@ class BinaryRecordManager {
       raf.seek(0);
       raf.writeInt(ultimoId);
 
-      System.out.println("Arquivo gravado com sucesso! Último ID: " + ultimoId);
+      // System.out.println("Arquivo gravado com sucesso! Último ID: " + ultimoId);
 
     } catch (IOException e) {
       e.printStackTrace();
+    }
+  }
+  /*
+   * [ Cabeçalho: 4 bytes (Último ID) ]
+   * ├── [ Tamanho do Registro: 4 bytes (int) ] <-- gravado por
+   * raf.writeInt(bytes.length)
+   * 
+   * [ Registro Serializado: N bytes ] <-- gravado por raf.write(bytes)
+   * ├── Lápide: 1 byte (boolean)
+   * ├── ID: 4 bytes (int)
+   * ├── ISBN: 13 bytes
+   * ├── Data: 8 bytes (long)
+   * ├── Preço: 4 bytes (float)
+   * ├── Páginas: 2 bytes (short)
+   * ├── Título: 2 bytes (tamanho) + M bytes (texto UTF-8)
+   * ├── Autor: 2 bytes (tamanho) + K bytes (texto UTF-8)
+   * └── Gêneros: 2 bytes (tamanho) + P bytes (texto UTF-8)
+   */
+
+  public void read(int limiteLeitura) {
+    File arquivoBinario = new File(FILE);
+
+    try (RandomAccessFile raf = new RandomAccessFile(arquivoBinario, "r")) {
+      if (raf.length() == 0) {
+        System.out.println("Arquivo vazio.");
+        return;
+      }
+
+      int ultimoId = raf.readInt();
+
+      System.out.println("=== CABEÇALHO ===");
+      System.out.println("Último ID cadastrado: " + ultimoId);
+      System.out.println("=================");
+
+      int i = 0;
+
+      while (i < limiteLeitura && raf.getFilePointer() < raf.length()) {
+        int tamanhoRegistro = raf.readInt();
+        byte[] bytes = new byte[tamanhoRegistro];
+
+        raf.readFully(bytes);
+
+        Livro livro = new Livro();
+        livro.fromByteArray(bytes);
+
+        if (!livro.getLapide()) {
+          livro.exibirDetalhes();
+        } else {
+          System.out.println("[Registro com ID " + livro.getid() + " marcado como EXCLUÍDO]");
+        }
+
+        i++;
+      }
+
+    } catch (FileNotFoundException e) {
+      System.err.println("Erro em BinaryRecordManager - read: O arquivo não existe");
+    } catch (IOException e) {
+      System.err.println("Erro em BinaryRecordManager - read: Erro na leitura do arquivo -> " + e.getMessage());
     }
   }
 }
 
 class App {
   public static void main(String args[]) {
-    BinaryRecordManager manager = new BinaryRecordManager("test.bin");
+    BinaryRecordManager manager = new BinaryRecordManager(args[0]);
     File csv = new File("base_livros.csv");
 
     manager.create(csv);
+    manager.read(1);
   }
 }
