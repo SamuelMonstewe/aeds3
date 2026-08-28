@@ -348,6 +348,49 @@ class BinaryRecordManager {
       System.err.println("Erro em BinaryRecordManager - read: Erro na leitura do arquivo -> " + e.getMessage());
     }
   }
+    
+    public boolean delete(int id) {
+        File arquivoBinario = new File(FILE);
+
+        try (RandomAccessFile raf = new RandomAccessFile(arquivoBinario, "rw")) {
+
+            if (raf.length() == 0) {
+                return false;
+            }
+
+            raf.seek(4); //pula último ID
+
+            while(raf.getFilePointer()<raf.length()){
+                int tamanhoRegistro = raf.readInt(); //lê o tamanho
+
+                long posicaoRegistro = raf.getFilePointer();
+
+                byte[] bytes = new byte[tamanhoRegistro];
+                raf.readFully(bytes); //lê o registro e coloca o ponteiro no tamanho do próximo registro
+
+                Livro livro = new Livro();
+                livro.fromByteArray(bytes); //recupera livro
+
+                if(!livro.getLapide() && livro.getid()==id){ //livro encontrado
+
+                    livro.setLapide(true); //atualiza lapide
+                    byte[] novosBytes = livro.toByteArray();
+
+                    raf.seek(posicaoRegistro); //volta o ponteiro
+                    raf.write(novosBytes); //escreve com a lapide atualizada
+
+                    return true;
+            }
+        }
+
+    } catch (IOException e){
+        System.err.println(
+            "Erro em BinaryRecordManager - delete: " + e.getMessage()
+        );
+    }
+
+    return false;
+    }
 }
 
 class App {
@@ -359,5 +402,20 @@ class App {
     Optional<Livro> livro = manager.find(100);
     livro.ifPresent(l -> l.exibirDetalhes());
 
+
+    System.out.println("ANTES: ");
+    manager.read(10);
+
+    //deletando ID = 2
+    
+    if(manager.delete(2)){
+        System.out.println("Livro deletado com sucesso");
+    }else{
+        System.out.println("Livro não encontrado");
+    }
+    
+    System.out.println("Depois:\n");
+    manager.read(10);
+    
   }
 }
