@@ -1,5 +1,6 @@
 import java.util.*;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -263,22 +264,51 @@ class BinaryRecordManager {
       e.printStackTrace();
     }
   }
-  /*
-   * [ Cabeçalho: 4 bytes (Último ID) ]
-   * ├── [ Tamanho do Registro: 4 bytes (int) ] <-- gravado por
-   * raf.writeInt(bytes.length)
-   * 
-   * [ Registro Serializado: N bytes ] <-- gravado por raf.write(bytes)
-   * ├── Lápide: 1 byte (boolean)
-   * ├── ID: 4 bytes (int)
-   * ├── ISBN: 13 bytes
-   * ├── Data: 8 bytes (long)
-   * ├── Preço: 4 bytes (float)
-   * ├── Páginas: 2 bytes (short)
-   * ├── Título: 2 bytes (tamanho) + M bytes (texto UTF-8)
-   * ├── Autor: 2 bytes (tamanho) + K bytes (texto UTF-8)
-   * └── Gêneros: 2 bytes (tamanho) + P bytes (texto UTF-8)
-   */
+
+  public Optional<Livro> find(int id) {
+    File arquivoBinario = new File(FILE);
+
+    try (RandomAccessFile raf = new RandomAccessFile(arquivoBinario, "r")) {
+      raf.seek(4); // pula os 4 bytes do cabeçalho que armazena o ultimo id
+
+      while (raf.getFilePointer() < raf.length()) {
+
+        long posInicioRegistro = raf.getFilePointer();
+        int tamanhoRegistro = raf.readInt();
+        boolean lapideRegistro = raf.readBoolean();
+        int idLivro = raf.readInt();
+
+        if (!lapideRegistro && id == idLivro) {
+          raf.seek(posInicioRegistro + 4); // +4 para pular os bytes que identificam o tamanho
+
+          byte[] bytes = new byte[tamanhoRegistro];
+          raf.readFully(bytes);
+
+          Livro livro = new Livro();
+          livro.fromByteArray(bytes);
+          livro.setLapide(false);
+
+          return Optional.of(livro);
+
+        } else {
+          raf.seek(posInicioRegistro + 4 + tamanhoRegistro); // voltamos para o início do registro, pulamos os 4 bytes
+                                                             // que guardam o tamanho do registro
+          // e depois pulamos o registro por si só
+        }
+
+      }
+
+    } catch (EOFException e) {
+      System.err.println("Erro em BinaryRecordManager - find: Erro na leitura do arquivo: Fim de arquivo alcançado -> "
+          + e.getMessage());
+    } catch (FileNotFoundException e) {
+      System.err.println("Erro em BinaryRecordManager - find: O arquivo não existe");
+    } catch (IOException e) {
+      System.err.println("Erro em BinaryRecordManager - find: Erro na leitura do arquivo -> " + e.getMessage());
+    }
+
+    return Optional.empty();
+  }
 
   public void read(int limiteLeitura) {
     File arquivoBinario = new File(FILE);
@@ -289,11 +319,7 @@ class BinaryRecordManager {
         return;
       }
 
-      int ultimoId = raf.readInt();
-
-      System.out.println("=== CABEÇALHO ===");
-      System.out.println("Último ID cadastrado: " + ultimoId);
-      System.out.println("=================");
+      raf.readInt();
 
       int i = 0;
 
@@ -308,13 +334,14 @@ class BinaryRecordManager {
 
         if (!livro.getLapide()) {
           livro.exibirDetalhes();
-        } else {
-          System.out.println("[Registro com ID " + livro.getid() + " marcado como EXCLUÍDO]");
         }
 
         i++;
       }
 
+    } catch (EOFException e) {
+      System.err.println("Erro em BinaryRecordManager - read: Erro na leitura do arquivo: Fim de arquivo alcançado -> "
+          + e.getMessage());
     } catch (FileNotFoundException e) {
       System.err.println("Erro em BinaryRecordManager - read: O arquivo não existe");
     } catch (IOException e) {
@@ -327,8 +354,10 @@ class App {
   public static void main(String args[]) {
     BinaryRecordManager manager = new BinaryRecordManager(args[0]);
     File csv = new File("base_livros.csv");
-
     manager.create(csv);
-    manager.read(1);
+
+    Optional<Livro> livro = manager.find(100);
+    livro.ifPresent(l -> l.exibirDetalhes());
+
   }
 }
