@@ -222,7 +222,7 @@ class BinaryRecordManager {
 
       int i = 0;
 
-      while (i < 100 && s.hasNextLine()) {
+      while (i < 10 && s.hasNextLine()) {
         String linha = s.nextLine();
         try {
           String[] dados = linha.split(",");
@@ -258,10 +258,34 @@ class BinaryRecordManager {
       raf.seek(0);
       raf.writeInt(ultimoId);
 
-      // System.out.println("Arquivo gravado com sucesso! Último ID: " + ultimoId);
-
     } catch (IOException e) {
       e.printStackTrace();
+    }
+  }
+
+  public void insert(Livro livro) {
+    File arquivoBinario = new File(FILE);
+
+    try (RandomAccessFile raf = new RandomAccessFile(arquivoBinario, "rw")) {
+      int ultimoId = 0;
+
+      if (raf.length() > 0) {
+        ultimoId = raf.readInt();
+      }
+
+      livro.setid(++ultimoId);
+
+      raf.seek(raf.length());
+
+      byte[] bytes = livro.toByteArray();
+
+      raf.writeInt(bytes.length);
+      raf.write(bytes);
+      raf.seek(0);
+      raf.writeInt(ultimoId);
+
+    } catch (IOException e) {
+      System.err.println("Erro em BinaryRecordManager - insert: Erro na leitura do arquivo -> " + e.getMessage());
     }
   }
 
@@ -348,74 +372,87 @@ class BinaryRecordManager {
       System.err.println("Erro em BinaryRecordManager - read: Erro na leitura do arquivo -> " + e.getMessage());
     }
   }
-    
-    public boolean delete(int id) {
-        File arquivoBinario = new File(FILE);
 
-        try (RandomAccessFile raf = new RandomAccessFile(arquivoBinario, "rw")) {
+  public boolean delete(int id) {
+    File arquivoBinario = new File(FILE);
 
-            if (raf.length() == 0) {
-                return false;
-            }
+    try (RandomAccessFile raf = new RandomAccessFile(arquivoBinario, "rw")) {
 
-            raf.seek(4); //pula último ID
+      if (raf.length() == 0) {
+        return false;
+      }
 
-            while(raf.getFilePointer()<raf.length()){
-                int tamanhoRegistro = raf.readInt(); //lê o tamanho
+      raf.seek(4); // pula último ID
 
-                long posicaoRegistro = raf.getFilePointer();
+      while (raf.getFilePointer() < raf.length()) {
+        int tamanhoRegistro = raf.readInt(); // lê o tamanho
 
-                byte[] bytes = new byte[tamanhoRegistro];
-                raf.readFully(bytes); //lê o registro e coloca o ponteiro no tamanho do próximo registro
+        long posicaoRegistro = raf.getFilePointer();
 
-                Livro livro = new Livro();
-                livro.fromByteArray(bytes); //recupera livro
+        byte[] bytes = new byte[tamanhoRegistro];
+        raf.readFully(bytes); // lê o registro e coloca o ponteiro no tamanho do próximo registro
 
-                if(!livro.getLapide() && livro.getid()==id){ //livro encontrado
+        Livro livro = new Livro();
+        livro.fromByteArray(bytes); // recupera livro
 
-                    livro.setLapide(true); //atualiza lapide
-                    byte[] novosBytes = livro.toByteArray();
+        if (!livro.getLapide() && livro.getid() == id) { // livro encontrado
 
-                    raf.seek(posicaoRegistro); //volta o ponteiro
-                    raf.write(novosBytes); //escreve com a lapide atualizada
+          livro.setLapide(true); // atualiza lapide
+          byte[] novosBytes = livro.toByteArray();
 
-                    return true;
-            }
+          raf.seek(posicaoRegistro); // volta o ponteiro
+          raf.write(novosBytes); // escreve com a lapide atualizada
+
+          return true;
         }
+      }
 
-    } catch (IOException e){
-        System.err.println(
-            "Erro em BinaryRecordManager - delete: " + e.getMessage()
-        );
+    } catch (IOException e) {
+      System.err.println(
+          "Erro em BinaryRecordManager - delete: " + e.getMessage());
     }
 
     return false;
-    }
+  }
+}
+
+class Factory {
+  // Gera um livro padrão para testes rápidos
+  public static Livro criarLivroValido() {
+    return new Livro(
+        1,
+        "9788532511010",
+        "Harry Potter e a Pedra Filosofal",
+        "J.K. Rowling",
+        LocalDate.of(2004, 9, 23),
+        "Fantasia, Aventura",
+        49.90f,
+        (short) 224);
+  }
+
+  // Gera com ID dinâmico ou customizações simples
+  public static Livro criarComTituloEPreco(String titulo, float preco) {
+    Livro l = criarLivroValido();
+    l.setTitulo(titulo);
+    l.setPreco(preco);
+    return l;
+  }
 }
 
 class App {
   public static void main(String args[]) {
     BinaryRecordManager manager = new BinaryRecordManager(args[0]);
     File csv = new File("base_livros.csv");
+
     manager.create(csv);
 
-    Optional<Livro> livro = manager.find(100);
-    livro.ifPresent(l -> l.exibirDetalhes());
-
-
-    System.out.println("ANTES: ");
     manager.read(10);
 
-    //deletando ID = 2
-    
-    if(manager.delete(2)){
-        System.out.println("Livro deletado com sucesso");
-    }else{
-        System.out.println("Livro não encontrado");
-    }
-    
-    System.out.println("Depois:\n");
-    manager.read(10);
-    
+    manager.insert(Factory.criarLivroValido());
+    manager.insert(Factory.criarLivroValido());
+    manager.insert(Factory.criarLivroValido());
+
+    manager.read(13);
+
   }
 }
