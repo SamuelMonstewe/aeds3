@@ -12,6 +12,16 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 
+class Pair {
+  Livro livro;
+  long endereco;
+
+  public Pair(Livro l, long e) {
+    livro = l;
+    endereco = e;
+  }
+}
+
 class Livro {
   int id;
   boolean lapide;
@@ -289,7 +299,48 @@ class BinaryRecordManager {
     }
   }
 
-  public Optional<Livro> find(int id) {
+  public void update(int id, Livro atualizado) {
+    Optional<Pair> p = find(id);
+
+    if (p.isEmpty()) {
+      System.out.println("O arquivo não contem esse registro!");
+      return;
+    }
+
+    Pair pair = p.get();
+
+    atualizado.setid(id);
+
+    File arquivoBinario = new File(FILE);
+
+    try (RandomAccessFile raf = new RandomAccessFile(arquivoBinario, "rw")) {
+      long posInicialRegistroAntigo = pair.endereco;
+
+      raf.seek(posInicialRegistroAntigo);
+
+      long tamanhoRegistroAntigo = raf.readInt();
+
+      byte[] bytesAtualizado = atualizado.toByteArray();
+      int tamanhoRegistroAtualizado = bytesAtualizado.length;
+
+      if (tamanhoRegistroAtualizado <= tamanhoRegistroAntigo) {
+        raf.write(bytesAtualizado);
+      } else {
+        raf.seek(posInicialRegistroAntigo + 4);
+        raf.writeBoolean(true);
+
+        raf.seek(raf.length());
+
+        raf.writeInt(tamanhoRegistroAtualizado);
+        raf.write(bytesAtualizado);
+      }
+    } catch (IOException e) {
+      System.err.println("Erro em BinaryRecordManager - update: Erro na leitura do arquivo -> " + e.getMessage());
+    }
+
+  }
+
+  public Optional<Pair> find(int id) {
     File arquivoBinario = new File(FILE);
 
     try (RandomAccessFile raf = new RandomAccessFile(arquivoBinario, "r")) {
@@ -312,7 +363,7 @@ class BinaryRecordManager {
           livro.fromByteArray(bytes);
           livro.setLapide(false);
 
-          return Optional.of(livro);
+          return Optional.of(new Pair(livro, posInicioRegistro));
 
         } else {
           raf.seek(posInicioRegistro + 4 + tamanhoRegistro); // voltamos para o início do registro, pulamos os 4 bytes
@@ -449,10 +500,11 @@ class App {
     manager.read(10);
 
     manager.insert(Factory.criarLivroValido());
-    manager.insert(Factory.criarLivroValido());
-    manager.insert(Factory.criarLivroValido());
 
-    manager.read(13);
+    float d = 500.00f;
+    manager.update(8, Factory
+        .criarComTituloEPreco("çaldskjfçldasjfklçdjçfljlkjçdklsfjkçlsdjfklçjaklçjkldjfkldjalçkfjdsdklçafjkldjfklj", d));
+    manager.read(12);
 
   }
 }
