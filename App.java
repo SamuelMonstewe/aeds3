@@ -494,6 +494,11 @@ class BinaryRecordManager {
         RandomAccessFile rafTemp3 = new RandomAccessFile(temp3, "rw");
         RandomAccessFile rafTemp4 = new RandomAccessFile(temp4, "rw")) {
 
+      rafTemp1.setLength(0);
+      rafTemp2.setLength(0);
+      rafTemp3.setLength(0);
+      rafTemp4.setLength(0);
+
       RandomAccessFile[] rafsTemp = { rafTemp1, rafTemp2, rafTemp3, rafTemp4 };
 
       raf.readInt(); // pula o cabeçalho do arquivo
@@ -543,6 +548,48 @@ class BinaryRecordManager {
       System.err.println("Erro em BinaryRecordManager - read: Erro na leitura do arquivo -> " + e.getMessage());
     }
   }
+
+  public void verificarArquivoTemporario(String nomeArquivo) {
+    try (RandomAccessFile raf = new RandomAccessFile(nomeArquivo, "r")) {
+      System.out.println("--- Lendo arquivo: " + nomeArquivo + " ---");
+
+      int contagem = 0;
+      int ultimoId = -1;
+      boolean estaOrdenado = true;
+
+      // Lê até o final do arquivo
+      while (raf.getFilePointer() < raf.length()) {
+        int tamRegistro = raf.readInt();
+        byte[] bytes = new byte[tamRegistro];
+        raf.readFully(bytes);
+
+        Livro livro = new Livro();
+        livro.fromByteArray(bytes); // Reconstrói o objeto
+
+        // Imprime apenas os 5 primeiros para você dar uma olhada visual
+        if (contagem < 5) {
+          System.out.println("Registro " + (contagem + 1) + " -> ID: " + livro.getid());
+        }
+
+        // Verifica se a ordem crescente foi mantida
+        if (ultimoId != -1 && livro.getid() < ultimoId) {
+          estaOrdenado = false;
+        }
+        ultimoId = livro.getid();
+        contagem++;
+      }
+
+      System.out.println("...");
+      System.out.println("Total de registros encontrados: " + contagem);
+      System.out.println("Os registros estão ordenados por ID? " + (estaOrdenado ? "SIM!" : "NÃO!"));
+      System.out.println("----------------------------------------\n");
+
+    } catch (IOException e) {
+      System.out.println(
+          "EErro em BinaryRecordManager - verificarArquivoTemporario erro ao ler o arquivo: " + e.getMessage());
+      e.printStackTrace();
+    }
+  }
 }
 
 class Factory {
@@ -585,6 +632,7 @@ class GUI {
       System.out.println("5 - Deletar livro");
       System.out.println("6 - Listar registros");
       System.out.println("7 - Ordenacao externa");
+      System.out.println("8 - Debugar arquivos temporários");
       System.out.println("0 - Sair");
       System.out.print("Opcao: ");
 
@@ -661,10 +709,15 @@ class GUI {
         }
 
         case 7:
-          // implementar
-          System.out.println("Ordenacao externa ainda nao implementada.");
+          manager.reorganizarArquivo();
           break;
 
+        case 8:
+          manager.verificarArquivoTemporario("temp1.bin");
+          manager.verificarArquivoTemporario("temp2.bin");
+          manager.verificarArquivoTemporario("temp3.bin");
+          manager.verificarArquivoTemporario("temp4.bin");
+          break;
         case 0:
           System.out.println("Encerrando...");
           break;
