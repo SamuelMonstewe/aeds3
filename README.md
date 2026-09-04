@@ -1,5 +1,5 @@
 # aeds3
-Estrutura do registro
+Estrutura do arquivo de tamanho variável
 ```text
 [ Cabeçalho: 4 bytes (Último ID) ]
   ├── [ Tamanho do Registro: 4 bytes (int) ]  <-- gravado por raf.writeInt(bytes.length)
@@ -14,3 +14,4 @@ Estrutura do registro
         ├── Autor: 2 bytes (tamanho) + K bytes (texto UTF-8)
         └── Gêneros: 2 bytes (tamanho) + P bytes (texto UTF-8)
 ```
+O tamanho total de um registro será de 38 + (M + K + P) bytes (não está incluído o tamanho do registro de 4 bytes).
