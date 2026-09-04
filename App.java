@@ -549,6 +549,32 @@ class BinaryRecordManager {
     }
   }
 
+  private Livro lerLivroTemporario(RandomAccessFile raf) throws IOException {
+  if (raf.getFilePointer() >= raf.length()) {
+    return null;
+  }
+
+  int tamRegistro = raf.readInt();
+
+  byte[] bytes = new byte[tamRegistro];
+  raf.readFully(bytes);
+
+  Livro livro = new Livro();
+  livro.fromByteArray(bytes);
+
+  return livro;
+  }
+
+  private void escreverLivroTemporario(
+    RandomAccessFile raf,
+    Livro livro) throws IOException {
+
+  byte[] bytes = livro.toByteArray();
+
+  raf.writeInt(bytes.length);
+  raf.write(bytes);
+  }
+
   public void verificarArquivoTemporario(String nomeArquivo) {
     try (RandomAccessFile raf = new RandomAccessFile(nomeArquivo, "r")) {
       System.out.println("--- Lendo arquivo: " + nomeArquivo + " ---");
