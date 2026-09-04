@@ -568,9 +568,9 @@ class Factory {
   }
 }
 
-class App {
-  public static void main(String args[]) {
-    BinaryRecordManager manager = new BinaryRecordManager(args[0]);
+class GUI {
+
+  static void exibirMenu(BinaryRecordManager manager) {
     File csv = new File("base_livros.csv");
 
     Scanner sc = new Scanner(System.in);
@@ -676,6 +676,7 @@ class App {
     } while (opcao != 0);
 
     sc.close();
+
   }
 
   private static Livro lerLivro(Scanner sc) {
@@ -704,4 +705,13 @@ class App {
 
     return livro;
   }
+}
+
+class App {
+  public static void main(String args[]) {
+    BinaryRecordManager manager = new BinaryRecordManager(args[0]);
+
+    GUI.exibirMenu(manager);
+  }
+
 }
