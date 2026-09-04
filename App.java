@@ -232,7 +232,7 @@ class BinaryRecordManager {
 
       int i = 0;
 
-      while (i < 10 && s.hasNextLine()) {
+      while (s.hasNextLine()) {
         String linha = s.nextLine();
         try {
           String[] dados = linha.split(",");
@@ -465,6 +465,84 @@ class BinaryRecordManager {
 
     return false;
   }
+
+  // esse método utiliza intercalação balanceada de 4 caminhos
+  // um benefício de ter escolhido um tamanho de buffer como 25k
+  // é a capacidade de ordenar os elementos apenas com 2 passadas:
+  /*
+   * 25k
+   * 25k 50k 100k
+   * 25k 50k
+   * 25k
+   */
+  public void reorganizarArquivo() {
+
+    final int TAM_BUFFER = 25000;
+    File arquivoBinario = new File(FILE);
+    ArrayList<Livro> buffer = new ArrayList<>(TAM_BUFFER);
+
+    int i = 0;
+
+    File temp1 = new File("temp1.bin");
+    File temp2 = new File("temp2.bin");
+    File temp3 = new File("temp3.bin");
+    File temp4 = new File("temp4.bin");
+
+    try (RandomAccessFile raf = new RandomAccessFile(arquivoBinario, "r");
+        RandomAccessFile rafTemp1 = new RandomAccessFile(temp1, "rw");
+        RandomAccessFile rafTemp2 = new RandomAccessFile(temp2, "rw");
+        RandomAccessFile rafTemp3 = new RandomAccessFile(temp3, "rw");
+        RandomAccessFile rafTemp4 = new RandomAccessFile(temp4, "rw")) {
+
+      RandomAccessFile[] rafsTemp = { rafTemp1, rafTemp2, rafTemp3, rafTemp4 };
+
+      raf.readInt(); // pula o cabeçalho do arquivo
+
+      while (raf.getFilePointer() < raf.length()) {
+        int tamRegistro = raf.readInt();
+        long posicaoAntesDaLapide = raf.getFilePointer();
+        boolean lapide = raf.readBoolean();
+
+        if (lapide) {
+          raf.seek(posicaoAntesDaLapide + tamRegistro);
+        } else {
+          raf.seek(posicaoAntesDaLapide);
+
+          Livro livro = new Livro();
+          byte[] bytes = new byte[tamRegistro];
+          raf.readFully(bytes);
+          livro.fromByteArray(bytes);
+
+          buffer.add(livro);
+
+          if (buffer.size() == TAM_BUFFER) {
+            buffer.sort(Comparator.comparingInt(l -> l.getid()));
+
+            for (Livro l : buffer) {
+              byte[] b = l.toByteArray();
+              rafsTemp[i].writeInt(b.length);
+              rafsTemp[i].write(b);
+            }
+
+            i = (i + 1) % 4;
+            buffer.clear();
+          }
+        }
+      }
+
+      if (!buffer.isEmpty()) {
+        buffer.sort(Comparator.comparingInt(l -> l.getid()));
+
+        for (Livro l : buffer) {
+          byte[] b = l.toByteArray();
+          rafsTemp[i].writeInt(b.length);
+          rafsTemp[i].write(b);
+        }
+      }
+    } catch (IOException e) {
+      System.err.println("Erro em BinaryRecordManager - read: Erro na leitura do arquivo -> " + e.getMessage());
+    }
+  }
 }
 
 class Factory {
@@ -496,15 +574,7 @@ class App {
     File csv = new File("base_livros.csv");
 
     manager.create(csv);
-
-    manager.read(10);
-
-    manager.insert(Factory.criarLivroValido());
-
-    float d = 500.00f;
-    manager.update(8, Factory
-        .criarComTituloEPreco("çaldskjfçldasjfklçdjçfljlkjçdklsfjkçlsdjfklçjaklçjkldjfkldjalçkfjdsdklçafjkldjfklj", d));
-    manager.read(12);
+    manager.reorganizarArquivo();
 
   }
 }
