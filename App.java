@@ -575,6 +575,360 @@ class BinaryRecordManager {
   raf.write(bytes);
   }
 
+  private boolean aindaTemDados(
+    RandomAccessFile[] arquivos) throws IOException {
+
+  for (RandomAccessFile raf : arquivos) {
+    if (raf.getFilePointer() < raf.length()) {
+      return true;
+    }
+  }
+
+  return false;
+  }
+
+  private void intercalarUmaRun(
+    RandomAccessFile[] entradas,
+    RandomAccessFile saida,
+    long tamanhoRun) throws IOException {
+
+  Livro[] atuais = new Livro[4];
+
+  // Quantos registros já foram consumidos da run
+  // atual de cada arquivo
+  long[] lidos = new long[4];
+
+  //Pega o primeiro registro da run atual de cada um dos quatro caminhos.
+   
+  for (int i = 0; i < 4; i++) {
+
+    if (entradas[i].getFilePointer() < entradas[i].length()) {
+
+      atuais[i] = lerLivroTemporario(entradas[i]);
+      lidos[i] = 1;
+    }
+  }
+
+  while (true) {
+
+    int menor = -1;
+
+     //Procura o menor registro entre os quatro registros atualmente carregados
+     
+    for (int i = 0; i < 4; i++) {
+
+      if (atuais[i] != null) {
+
+        if (menor == -1 ||
+            atuais[i].getid() < atuais[menor].getid()) {
+
+          menor = i;
+        }
+      }
+    }
+
+    
+     //Se todos estão null, todas as runs atuais terminaram.
+     
+    if (menor == -1) {
+      break;
+    }
+
+    escreverLivroTemporario(
+        saida,
+        atuais[menor]
+    );
+
+    /*
+     * Avança somente no caminho de onde saiu
+     * o menor elemento.
+     *
+     * não ultrapassar tamanhoRun
+     * pois depois dele começa a próxima run
+     * daquele arquivo
+     */
+
+    if (lidos[menor] < tamanhoRun &&
+        entradas[menor].getFilePointer()
+            < entradas[menor].length()) {
+
+      atuais[menor] =
+          lerLivroTemporario(entradas[menor]);
+
+      lidos[menor]++;
+
+    } else {
+
+      atuais[menor] = null;
+    }
+  }
+  }
+
+  private int executarPassada(
+    File[] entradas,
+    File[] saidas,
+    long tamanhoRun) throws IOException {
+
+  RandomAccessFile[] in =
+      new RandomAccessFile[4];
+
+  RandomAccessFile[] out =
+      new RandomAccessFile[4];
+
+  try {
+
+    for (int i = 0; i < 4; i++) {
+
+      in[i] =
+          new RandomAccessFile(entradas[i], "r");
+
+      out[i] =
+          new RandomAccessFile(saidas[i], "rw");
+
+      out[i].setLength(0);
+    }
+
+    int indiceSaida = 0;
+    int quantidadeRuns = 0;
+
+    /*
+     * Enquanto existir pelo menos uma run
+     * em algum dos quatro arquivos.
+     */
+    while (aindaTemDados(in)) {
+
+      intercalarUmaRun(
+          in,
+          out[indiceSaida],
+          tamanhoRun
+      );
+
+      quantidadeRuns++;
+
+       //Distribuição balanceada das novas runs
+       
+      indiceSaida =
+          (indiceSaida + 1) % 4;
+    }
+
+    return quantidadeRuns;
+
+  } finally {
+
+    for (int i = 0; i < 4; i++) {
+
+      if (in[i] != null) {
+        in[i].close();
+      }
+
+      if (out[i] != null) {
+        out[i].close();
+      }
+    }
+  }
+  }
+
+  private void copiarResultadoParaArquivoPrincipal(
+    File arquivoResultado) throws IOException {
+
+  File arquivoPrincipal =
+      new File(FILE);
+
+  int ultimoId;
+
+  /*
+   * Guarda o cabeçalho.
+   *
+   * Ele representa o último ID utilizado e
+   * precisa continuar existindo depois da
+   * reorganização.
+   */
+  try (RandomAccessFile original =
+      new RandomAccessFile(arquivoPrincipal, "r")) {
+
+    original.seek(0);
+    ultimoId = original.readInt();
+  }
+
+  try (
+      RandomAccessFile origem =
+          new RandomAccessFile(arquivoResultado, "r");
+
+      RandomAccessFile destino =
+          new RandomAccessFile(arquivoPrincipal, "rw")
+  ) {
+
+    /*
+     * Apaga fisicamente o conteúdo antigo,
+     * com os registros com lápide.
+     */
+    destino.setLength(0);
+
+    // restaura cabeçalho
+    destino.writeInt(ultimoId);
+
+    while (origem.getFilePointer()
+        < origem.length()) {
+
+      int tamRegistro =
+          origem.readInt();
+
+      byte[] bytes =
+          new byte[tamRegistro];
+
+      origem.readFully(bytes);
+
+      destino.writeInt(tamRegistro);
+      destino.write(bytes);
+    }
+  }
+  }
+
+  private void limparArquivoPrincipal()
+    throws IOException {
+
+  File arquivoPrincipal =
+      new File(FILE);
+
+  try (RandomAccessFile raf =
+      new RandomAccessFile(arquivoPrincipal, "rw")) {
+
+    int ultimoId = 0;
+
+    if (raf.length() >= 4) {
+      ultimoId = raf.readInt();
+    }
+
+    /*
+     * Se todos os registros estavam deletados,
+     * sobra somente o cabeçalho.
+     */
+    raf.setLength(0);
+    raf.writeInt(ultimoId);
+  }
+  }
+
+  private void apagarTemporarios(
+    File[] arquivos) {
+
+  for (File arquivo : arquivos) {
+
+    if (arquivo.exists()) {
+      arquivo.delete();
+    }
+  }
+}
+
+
+public void finalizarReorganizacao() {
+
+  final long TAM_BUFFER = 25000;
+
+  /*
+   * Esses são exatamente os quatro arquivos
+   * produzidos pelo reorganizarArquivo()
+   * existente.
+   */
+  File[] entrada = {
+      new File("temp1.bin"),
+      new File("temp2.bin"),
+      new File("temp3.bin"),
+      new File("temp4.bin")
+  };
+
+  /*
+   * Segundo conjunto de quatro caminhos.
+   *
+   * Em cada passada entrada e saída trocam
+   * de função.
+   */
+  File[] saida = {
+      new File("saida1.bin"),
+      new File("saida2.bin"),
+      new File("saida3.bin"),
+      new File("saida4.bin")
+  };
+
+  try {
+
+    long tamanhoRun = TAM_BUFFER;
+
+    while (true) {
+
+      int quantidadeRuns =
+          executarPassada(
+              entrada,
+              saida,
+              tamanhoRun
+          );
+
+      /*
+       * Nenhum registro válido foi encontrado.
+       * Isso acontece, por exemplo, se todos
+       * estiverem com lápide.
+       */
+      if (quantidadeRuns == 0) {
+
+        limparArquivoPrincipal();
+
+        apagarTemporarios(entrada);
+        apagarTemporarios(saida);
+
+        System.out.println(
+            "Arquivo reorganizado. Nao existem registros ativos."
+        );
+
+        return;
+      }
+
+      /*
+       * Uma única run significa que todos
+       * os registros estão ordenados.
+       *
+       * Como indiceSaida começa em zero,
+       * essa única run está em saida[0].
+       */
+      if (quantidadeRuns == 1) {
+
+        copiarResultadoParaArquivoPrincipal(
+            saida[0]
+        );
+
+        apagarTemporarios(entrada);
+        apagarTemporarios(saida);
+
+        System.out.println(
+            "Arquivo reorganizado e ordenado com sucesso!"
+        );
+
+        return;
+      }
+
+      /*
+       * Como a intercalação é de quatro caminhos,
+       * uma nova run pode ter até quatro vezes
+       * o tamanho da run anterior.
+       */
+      tamanhoRun *= 4;
+
+      /*
+       * A saída desta passada vira a entrada
+       * da próxima.
+       */
+      File[] aux = entrada;
+      entrada = saida;
+      saida = aux;
+    }
+
+  } catch (IOException e) {
+
+    System.err.println(
+        "Erro ao finalizar reorganizacao: "
+            + e.getMessage()
+    );
+  }
+  }
+
   public void verificarArquivoTemporario(String nomeArquivo) {
     try (RandomAccessFile raf = new RandomAccessFile(nomeArquivo, "r")) {
       System.out.println("--- Lendo arquivo: " + nomeArquivo + " ---");
@@ -736,6 +1090,7 @@ class GUI {
 
         case 7:
           manager.reorganizarArquivo();
+          manager.finalizarReorganizacao();
           break;
 
         case 8:
