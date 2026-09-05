@@ -11,6 +11,7 @@ Os arquivos com declaração de `package` devem obrigatoriamente seguir a mesma 
 
 ```text
 aeds3/
+├── app.jar                    # Executável do Software
 ├── App.java                   # Contém o método main (sem package)
 ├── base_livros.csv            # Base de dados de leitura
 ├── br/
