@@ -1,5 +1,32 @@
 # aeds3
-Estrutura do arquivo de tamanho variável
+# Guia Completo: Compilação, Modularização e Execução
+
+Este guia reúne todas as etapas de configuração, compilação, geração do executável e execução do projeto.
+
+---
+
+## 1. Estrutura de Diretórios Esperada
+
+Os arquivos com declaração de `package` devem obrigatoriamente seguir a mesma árvore de diretórios a partir da raiz do projeto:
+
+```text
+aeds3/
+├── App.java                   # Contém o método main (sem package)
+├── base_livros.csv            # Base de dados de leitura
+├── br/
+│   └── edu/
+│       └── pucminas/
+│           └── icei/
+│               ├── livro/
+│               │   └── Livro.java              # package br.edu.pucminas.icei.livro;
+│               ├── pair/
+│               │   └── Pair.java               # package br.edu.pucminas.icei.pair;
+│               ├── binaryrecordmanager/
+│               │   └── BinaryRecordManager.java # package br.edu.pucminas.icei.binaryrecordmanager;
+│               └── gui/
+│                   └── GUI.java                # package br.edu.pucminas.icei.gui;
+```
+## 2. Estrutura do arquivo de tamanho variável
 ```text
 [ Cabeçalho: 4 bytes (Último ID) ]
   ├── [ Tamanho do Registro: 4 bytes (int) ]  <-- gravado por raf.writeInt(bytes.length)
