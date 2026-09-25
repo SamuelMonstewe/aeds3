@@ -11,6 +11,7 @@ Os arquivos com declaração de `package` devem obrigatoriamente seguir a mesma 
 
 ```text
 aeds3/
+├── app.jar                    # Executável do Software
 ├── App.java                   # Contém o método main (sem package)
 ├── base_livros.csv            # Base de dados de leitura
 ├── br/
@@ -26,7 +27,15 @@ aeds3/
 │               └── gui/
 │                   └── GUI.java                # package br.edu.pucminas.icei.gui;
 ```
-## 2. Estrutura do arquivo de tamanho variável
+## 2. Instruções de Compilação e Execução
+
+Para compilar o projeto manualmente a partir da raiz, utilize:
+> javac App.java br/edu/pucminas/icei/[asterisco]/[asterisco].java
+
+Para executar o sistema passando o arquivo binário como argumento, utilize o `.jar` já fornecido:
+> java -jar app.jar db.bin
+
+## 3. Estrutura do arquivo de tamanho variável
 ```text
 [ Cabeçalho: 4 bytes (Último ID) ]
   ├── [ Tamanho do Registro: 4 bytes (int) ]  <-- gravado por raf.writeInt(bytes.length)
