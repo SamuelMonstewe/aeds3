@@ -90,6 +90,30 @@ public class BinaryRecordManager {
     }
   }
 
+  public void reconstruirIndice() {
+    File arquivoBinario = new File(FILE);
+
+    try (RandomAccessFile raf = new RandomAccessFile(arquivoBinario, "rw")) {
+      raf.seek(4);
+
+      while (raf.getFilePointer() < raf.length()) {
+        long posInicioRegistro = raf.getFilePointer();
+        int tamanhoRegistro = raf.readInt();
+        byte[] bytes = new byte[tamanhoRegistro];
+        raf.readFully(bytes);
+
+        Livro livro = new Livro();
+        livro.fromByteArray(bytes);
+
+      }
+
+    } catch (IOException e) {
+      System.err
+          .println("Erro em BinaryRecordManager - reconstruirIndice: Erro na leitura do arquivo -> " + e.getMessage());
+    }
+
+  }
+
   public void insert(Livro livro) {
     File arquivoBinario = new File(FILE);
 

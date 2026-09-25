@@ -140,11 +140,61 @@ class ArvoreB {
     }
   }
 
-  /*
-   * cresceu[] avisa para a página pai se a filha estourou
-   * regRetorno[] é o registro que está subindo para o pai
-   * Como em java não possui variáveis passadas por referencia,
-   * usamos arrays de 1 posição
+  /**
+   * Realiza a inserção de um registro na Árvore B de forma recursiva, descendo
+   * até as folhas e propagando eventuais divisões (splits) na volta (bottom-up).
+   * Todo o tráfego de páginas é feito em disco usando offsets (endereços).
+   * 
+   * O fluxo de execução divide-se em 4 passos lógicos principais:
+   * 
+   * Passo 1: O Caso Base (Fundo da Árvore)
+   * - Se o endereço recebido for -1L, a recursão alcançou o "chão" (abaixo de uma
+   * folha).
+   * - O método sinaliza que um registro precisa ser inserido marcando cresceu[0]
+   * = true
+   * e colocando o registro a ser inserido em regRetorno[0].
+   * 
+   * Passo 2: Leitura e Descida Recursiva
+   * - Carrega a página atual do disco.
+   * - Localiza a posição de descida (ou barra a operação se a chave for
+   * duplicada).
+   * - Chama a si mesmo recursivamente passando o offset do filho apropriado. A
+   * execução
+   * desta página fica pausada aguardando o retorno do nível inferior.
+   * 
+   * Passo 3: O Retorno - Inserção Simples (Sem Split)
+   * - Ao retornar da recursão, verifica a flag cresceu[0]. Se for true, um
+   * registro "subiu".
+   * - Se a página atual ainda tiver espaço (n < mm), o registro emergente e o
+   * ponteiro
+   * para sua nova página irmã (retornado pela recursão) são inseridos nela.
+   * - A página é salva no disco, cresceu[0] é setado para false (a propagação
+   * para por aqui),
+   * e a função retorna o offset original da página.
+   * 
+   * Passo 4: O Retorno - Divisão de Página (Split)
+   * - Se a página atual estiver cheia (n == mm) ao receber um registro emergente,
+   * ocorre o split:
+   * a) Uma nova página (irmã direita) é criada.
+   * b) Os registros (os originais + o que subiu) são distribuídos: metade fica na
+   * página atual e a outra metade vai para a página nova.
+   * c) A chave exata do meio (mediana) é destacada e atribuída a regRetorno[0].
+   * d) A flag cresceu[0] permanece true para que o pai lide com o elemento do
+   * meio.
+   * e) Ambas as páginas são gravadas no disco e o método retorna o endereço da
+   * nova irmã.
+   * 
+   * @param reg        O Item (registro) a ser inserido.
+   * @param endAp      O offset (endereço) da página atual no RandomAccessFile.
+   * @param regRetorno Array de 1 posição contendo o Item promovido durante um
+   *                   split.
+   * @param cresceu    Array de 1 posição (boolean) alertando a página superior
+   *                   que houve divisão.
+   * 
+   * @return O offset no arquivo da página direita recém-criada (em caso de split)
+   *         ou o endereço atual.
+   * @throws IOException Se houver falha de I/O na leitura ou gravação do
+   *                     RandomAccessFile.
    */
   private long insere(Item reg, long endAp, Item[] regRetorno, boolean[] cresceu) throws IOException {
     // cheguei em null (-1)?
@@ -183,9 +233,11 @@ class ArvoreB {
         return ap.endereco;
       } else {
         // se não tiver espaço, precisamos fazer o split
-        Pagina apTemp = new Pagina(this.mm);
+        Pagina apTemp = new Pagina(this.mm); // (irmã) [ vazio | vazio | vazio | vazio ]
         apTemp.p[0] = -1L;
 
+        // se i <= this.m, significa que o novo registro pertence a metade esquerda
+        // (página original ap)
         if (i <= this.m) {
           insereNaPagina(apTemp, ap.r[this.mm - 1], ap.p[this.mm]);
           ap.n--;
