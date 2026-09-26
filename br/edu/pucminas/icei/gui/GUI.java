@@ -26,8 +26,10 @@ public class GUI {
       System.out.println("5 - Deletar livro");
       System.out.println("6 - Listar registros");
       System.out.println("7 - Ordenacao externa");
-      System.out.println("8 - Montar Índice");
+      System.out.println("8 - Montar Índice (essa operação pode levar até 1 min)");
       System.out.println("9 - Buscar Registro por indexação");
+      System.out.println("10 - Atualizar Registro por Indexação");
+      System.out.println("11 - Deletar Registro Por Indexação");
 
       System.out.println("0 - Sair");
       System.out.print("Opcao: ");
@@ -37,10 +39,12 @@ public class GUI {
 
       switch (opcao) {
 
-        case 1:
+        case 1: {
           manager.create(csv);
           System.out.println("Base carregada com sucesso!");
           break;
+
+        }
 
         case 2: {
           Livro livro = lerLivro(sc);
@@ -79,7 +83,13 @@ public class GUI {
 
           Livro atualizado = lerLivro(sc);
 
+          long ini = System.currentTimeMillis();
           manager.update(id, atualizado);
+
+          long fim = System.currentTimeMillis();
+          long tempoFinal = fim - ini;
+
+          System.out.println("Tempo de atualização: " + tempoFinal + " ms");
 
           break;
         }
@@ -89,11 +99,17 @@ public class GUI {
           int id = sc.nextInt();
           sc.nextLine();
 
+          long ini = System.currentTimeMillis();
           if (manager.delete(id)) {
             System.out.println("Livro deletado com sucesso!");
           } else {
             System.out.println("Livro nao encontrado.");
           }
+
+          long fim = System.currentTimeMillis();
+          long tempoFinal = fim - ini;
+
+          System.out.println("Tempo de deleção: " + tempoFinal + " ms");
 
           break;
         }
@@ -107,15 +123,29 @@ public class GUI {
           break;
         }
 
-        case 7:
+        case 7: {
+          long ini = System.currentTimeMillis();
           manager.reorganizarArquivo();
           manager.finalizarReorganizacao();
-          break;
 
-        case 8:
+          long fim = System.currentTimeMillis();
+          long tempoFinal = fim - ini;
+          System.out.println("Tempo de ordenção: " + tempoFinal + " ms");
+          break;
+        }
+
+        case 8: {
+          long ini = System.currentTimeMillis();
           manager.reconstruirIndice();
+          long fim = System.currentTimeMillis();
+          long tempoFinal = fim - ini;
+
+          System.out.println("Tempo de montagem do índice: " + tempoFinal + " ms");
           System.out.println("Arquivo de índice construído!");
-        case 9:
+
+          break;
+        }
+        case 9: {
           System.out.print("ID do livro: ");
           int id = sc.nextInt();
           sc.nextLine();
@@ -134,6 +164,46 @@ public class GUI {
           System.out.println("Tempo de consulta: " + tempoFinal + " ms");
 
           break;
+
+        }
+        case 10: {
+          System.out.print("ID do livro: ");
+          int id = sc.nextInt();
+          sc.nextLine();
+
+          System.out.println("Digite os novos dados:");
+
+          Livro atualizado = lerLivro(sc);
+
+          long ini = System.currentTimeMillis();
+          manager.updateViaIndice(id, atualizado);
+
+          long fim = System.currentTimeMillis();
+          long tempoFinal = fim - ini;
+
+          System.out.println("Tempo de operação: " + tempoFinal + " ms");
+          break;
+        }
+        case 11: {
+          System.out.print("ID do livro que deseja deletar: ");
+          int id = sc.nextInt();
+          sc.nextLine();
+
+          long ini = System.currentTimeMillis();
+          if (manager.deleteViaIndice(id)) {
+            System.out.println("Livro deletado com sucesso!");
+          } else {
+            System.out.println("Livro nao encontrado.");
+          }
+
+          long fim = System.currentTimeMillis();
+          long tempoFinal = fim - ini;
+
+          System.out.println("Tempo de operação: " + tempoFinal + " ms");
+
+          break;
+        }
+
         case 0:
           System.out.println("Encerrando...");
           break;

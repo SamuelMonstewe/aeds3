@@ -4,9 +4,14 @@ import br.edu.pucminas.icei.arvoreB.*;
 
 class App {
   public static void main(String args[]) {
-    BinaryRecordManager manager = new BinaryRecordManager(new ArvoreB(100, "idx_livros.idx"), args[0]);
+    try (ArvoreB indexId = new ArvoreB(100, "indice.bin")) {
 
-    GUI.exibirMenu(manager);
+      BinaryRecordManager manager = new BinaryRecordManager(indexId, "dados.bin");
+      GUI.exibirMenu(manager);
+
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
   }
 
 }

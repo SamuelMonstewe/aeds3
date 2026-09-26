@@ -170,6 +170,7 @@ public class BinaryRecordManager {
       livro.setid(++ultimoId);
 
       raf.seek(raf.length());
+      long posInicioRegistro = raf.getFilePointer();
 
       byte[] bytes = livro.toByteArray();
 
@@ -178,13 +179,14 @@ public class BinaryRecordManager {
       raf.seek(0);
       raf.writeInt(ultimoId);
 
+      indexId.insere(new Item(livro.getid(), posInicioRegistro));
     } catch (IOException e) {
       System.err.println("Erro em BinaryRecordManager - insert: Erro na leitura do arquivo -> " + e.getMessage());
     }
   }
 
   public void update(int id, Livro atualizado) {
-    Optional<Pair> p = find(id);
+    Optional<Pair> p = find(id); // Busca SEQUENCIAL
 
     if (p.isEmpty()) {
       System.out.println("O arquivo não contem esse registro!");
@@ -192,16 +194,57 @@ public class BinaryRecordManager {
     }
 
     Pair pair = p.get();
-
     atualizado.setid(id);
-
     File arquivoBinario = new File(FILE);
 
     try (RandomAccessFile raf = new RandomAccessFile(arquivoBinario, "rw")) {
       long posInicialRegistroAntigo = pair.endereco;
-
       raf.seek(posInicialRegistroAntigo);
+      long tamanhoRegistroAntigo = raf.readInt();
 
+      byte[] bytesAtualizado = atualizado.toByteArray();
+      int tamanhoRegistroAtualizado = bytesAtualizado.length;
+
+      if (tamanhoRegistroAtualizado <= tamanhoRegistroAntigo) {
+        raf.write(bytesAtualizado);
+      } else {
+        raf.seek(posInicialRegistroAntigo + 4);
+        raf.writeBoolean(true); // Lápide
+
+        raf.seek(raf.length());
+        long novaPos = raf.getFilePointer();
+        raf.writeInt(tamanhoRegistroAtualizado);
+        raf.write(bytesAtualizado);
+
+        if (indexId != null) {
+          try {
+            indexId.remove(id);
+            indexId.insere(new Item(id, novaPos));
+          } catch (IOException e) {
+            System.err.println("Erro ao atualizar o índice: " + e.getMessage());
+          }
+        }
+      }
+    } catch (IOException e) {
+      System.err.println("Erro em BinaryRecordManager - update: " + e.getMessage());
+    }
+  }
+
+  public void updateViaIndice(int id, Livro atualizado) {
+    Optional<Pair> p = buscarViaIndice(id);
+
+    if (p.isEmpty()) {
+      System.out.println("O arquivo não contem esse registro!");
+      return;
+    }
+
+    Pair pair = p.get();
+    atualizado.setid(id);
+    File arquivoBinario = new File(FILE);
+
+    try (RandomAccessFile raf = new RandomAccessFile(arquivoBinario, "rw")) {
+      long posInicialRegistroAntigo = pair.endereco;
+      raf.seek(posInicialRegistroAntigo);
       long tamanhoRegistroAntigo = raf.readInt();
 
       byte[] bytesAtualizado = atualizado.toByteArray();
@@ -214,14 +257,43 @@ public class BinaryRecordManager {
         raf.writeBoolean(true);
 
         raf.seek(raf.length());
-
+        long novaPos = raf.getFilePointer();
         raf.writeInt(tamanhoRegistroAtualizado);
         raf.write(bytesAtualizado);
+
+        if (indexId != null) {
+          indexId.remove(id);
+          indexId.insere(new Item(id, novaPos));
+        }
       }
     } catch (IOException e) {
-      System.err.println("Erro em BinaryRecordManager - update: Erro na leitura do arquivo -> " + e.getMessage());
+      System.err.println("Erro em BinaryRecordManager - updateViaIndice: " + e.getMessage());
     }
+  }
 
+  public boolean deleteViaIndice(int id) {
+    Optional<Pair> p = buscarViaIndice(id);
+
+    if (p.isEmpty())
+      return false;
+
+    Pair pair = p.get();
+    File arquivoBinario = new File(FILE);
+
+    try (RandomAccessFile raf = new RandomAccessFile(arquivoBinario, "rw")) {
+      long posicaoRegistro = pair.endereco;
+      raf.seek(posicaoRegistro + 4); // Vai direto para o booleano da lápide
+      raf.writeBoolean(true);
+
+      if (indexId != null) {
+        indexId.remove(id);
+      }
+      return true;
+
+    } catch (IOException e) {
+      System.err.println("Erro em BinaryRecordManager - deleteViaIndice: " + e.getMessage());
+    }
+    return false;
   }
 
   public Optional<Pair> find(int id) {
@@ -310,43 +382,42 @@ public class BinaryRecordManager {
 
   public boolean delete(int id) {
     File arquivoBinario = new File(FILE);
-
     try (RandomAccessFile raf = new RandomAccessFile(arquivoBinario, "rw")) {
-
-      if (raf.length() == 0) {
+      if (raf.length() == 0)
         return false;
-      }
 
       raf.seek(4); // pula último ID
-
       while (raf.getFilePointer() < raf.length()) {
-        int tamanhoRegistro = raf.readInt(); // lê o tamanho
-
+        int tamanhoRegistro = raf.readInt();
         long posicaoRegistro = raf.getFilePointer();
-
         byte[] bytes = new byte[tamanhoRegistro];
-        raf.readFully(bytes); // lê o registro e coloca o ponteiro no tamanho do próximo registro
+        raf.readFully(bytes);
 
         Livro livro = new Livro();
-        livro.fromByteArray(bytes); // recupera livro
+        livro.fromByteArray(bytes);
 
-        if (!livro.getLapide() && livro.getid() == id) { // livro encontrado
-
-          livro.setLapide(true); // atualiza lapide
+        if (!livro.getLapide() && livro.getid() == id) {
+          livro.setLapide(true);
           byte[] novosBytes = livro.toByteArray();
 
-          raf.seek(posicaoRegistro); // volta o ponteiro
-          raf.write(novosBytes); // escreve com a lapide atualizada
+          raf.seek(posicaoRegistro);
+          raf.write(novosBytes);
+
+          if (indexId != null) {
+            try {
+              indexId.remove(id);
+            } catch (IOException e) {
+              System.err.println("Erro ao remover do índice: " + e.getMessage());
+            }
+          }
+          // --------------------------------------
 
           return true;
         }
       }
-
     } catch (IOException e) {
-      System.err.println(
-          "Erro em BinaryRecordManager - delete: " + e.getMessage());
+      System.err.println("Erro em BinaryRecordManager - delete: " + e.getMessage());
     }
-
     return false;
   }
 
