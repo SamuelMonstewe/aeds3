@@ -292,4 +292,389 @@ public class ArvoreB {
     ap.p[k + 2] = endApDir;
     ap.n++;
   }
+
+
+  public void remove(int id) throws IOException {
+    if (this.enderecoRaiz == -1L) {
+        System.out.println("Erro: Árvore vazia");
+        return;
+    }
+
+    boolean[] diminuiu = new boolean[1];
+    boolean[] encontrou = new boolean[1];
+
+    remove(id, this.enderecoRaiz, diminuiu, encontrou);
+
+    if (!encontrou[0]) {
+        System.out.println("Erro: Chave não encontrada");
+        return;
+    }
+
+    // A raiz pode ficar sem nenhuma chave após uma fusão
+    Pagina raiz = lePagina(this.enderecoRaiz);
+
+    if (raiz.n == 0) {
+        // Se possuía um filho, esse filho vira a nova raiz
+        // Se não possuía, a árvore ficou vazia
+        this.enderecoRaiz = raiz.p[0];
+        atualizarCabecalhoRaiz();
+    }
+
+  }
+
+
+
+private void remove(int id, long endAp,
+                    boolean[] diminuiu,
+                    boolean[] encontrou) throws IOException {
+
+    if (endAp == -1L) {
+        diminuiu[0] = false;
+        encontrou[0] = false;
+        return;
+    }
+
+    Pagina ap = lePagina(endAp);
+
+    // Descobre a primeira posição cuja chave é >= id.
+    int i = 0;
+
+    while (i < ap.n && id > ap.r[i].id) {
+        i++;
+    }
+    
+    // CASO 1: encontramos a chave nesta página
+
+    if (i < ap.n && id == ap.r[i].id) {
+
+        encontrou[0] = true;
+
+        // CASO A página é folha
+
+        if (ap.p[0] == -1L) {
+
+            removeDaPagina(ap, i);
+
+            escrevePagina(ap);
+
+            // Se a página ficou abaixo do mínimo
+            diminuiu[0] =
+                (ap.endereco != this.enderecoRaiz && ap.n < this.m);
+
+            return;
+        }
+
+        
+        // CASO A página é interna
+        // Substituímos a chave pelo predecessor
+
+        long endPred = ap.p[i];
+
+        Pagina pred = lePagina(endPred);
+
+        while (pred.p[pred.n] != -1L) {
+            endPred = pred.p[pred.n];
+            pred = lePagina(endPred);
+        }
+
+        Item predecessor = pred.r[pred.n - 1];
+
+        // Copia o predecessor para a posição da chave removida.
+        ap.r[i].id = predecessor.id;
+        ap.r[i].regPtr = predecessor.regPtr;
+
+        escrevePagina(ap);
+
+        boolean[] diminuiuFilho = new boolean[1];
+        boolean[] encontrouPred = new boolean[1];
+
+        remove(
+            predecessor.id,
+            ap.p[i],
+            diminuiuFilho,
+            encontrouPred
+        );
+
+        if (diminuiuFilho[0]) {
+            ap = lePagina(endAp);
+
+            corrigeUnderflow(ap, i);
+
+            ap = lePagina(endAp);
+
+            diminuiu[0] =
+                (ap.endereco != this.enderecoRaiz && ap.n < this.m);
+        } else {
+            diminuiu[0] = false;
+        }
+
+        return;
+    }
+
+    // CASO 2: chave não está nesta página
+  
+    // Se é folha, então a chave não existe.
+    if (ap.p[0] == -1L) {
+        encontrou[0] = false;
+        diminuiu[0] = false;
+        return;
+    }
+
+    // A posição i também indica qual filho devemos visitar.
+    long endFilho = ap.p[i];
+
+    remove(id, endFilho, diminuiu, encontrou);
+
+    // Se nem encontramos a chave, não há nada para corrigir.
+    if (!encontrou[0]) {
+        diminuiu[0] = false;
+        return;
+    }
+   
+    // O filho ficou abaixo do mínimo.
+    // Precisamos redistribuir ou fundir.
+
+    if (diminuiu[0]) {
+
+        ap = lePagina(endAp);
+
+        corrigeUnderflow(ap, i);
+
+        ap = lePagina(endAp);
+
+        diminuiu[0] =
+            (ap.endereco != this.enderecoRaiz && ap.n < this.m);
+    }
+}
+
+private void removeDaPagina(Pagina ap, int pos) {
+
+    // Desloca as chaves para a esquerda
+    for (int j = pos; j < ap.n - 1; j++) {
+        ap.r[j].id = ap.r[j + 1].id;
+        ap.r[j].regPtr = ap.r[j + 1].regPtr;
+    }
+
+    // Desloca também os ponteiros
+    for (int j = pos + 1; j < ap.n; j++) {
+        ap.p[j] = ap.p[j + 1];
+    }
+
+    ap.n--;
+
+    // Limpa a última posição
+    ap.r[ap.n].id = -1;
+    ap.r[ap.n].regPtr = -1;
+
+    ap.p[ap.n + 1] = -1L;
+}
+
+
+private void corrigeUnderflow(Pagina pai, int posFilho)
+        throws IOException {
+
+    Pagina filho = lePagina(pai.p[posFilho]);
+
+    // 1. TENTA PEGAR UMA CHAVE DO IRMÃO ESQUERDO
+   
+    if (posFilho > 0) {
+
+        Pagina irmaoEsq = lePagina(pai.p[posFilho - 1]);
+
+        if (irmaoEsq.n > this.m) {
+
+            // Abre espaço no início do filho
+            for (int j = filho.n; j > 0; j--) {
+                filho.r[j].id = filho.r[j - 1].id;
+                filho.r[j].regPtr = filho.r[j - 1].regPtr;
+            }
+
+            for (int j = filho.n + 1; j > 0; j--) {
+                filho.p[j] = filho.p[j - 1];
+            }
+
+            // A chave do pai desce para o filho
+            filho.r[0].id = pai.r[posFilho - 1].id;
+            filho.r[0].regPtr = pai.r[posFilho - 1].regPtr;
+
+            // O último filho do irmão esquerdo passa para o filho
+            filho.p[0] = irmaoEsq.p[irmaoEsq.n];
+
+            // A maior chave do irmão esquerdo sobe para o pai
+            pai.r[posFilho - 1].id =
+                irmaoEsq.r[irmaoEsq.n - 1].id;
+
+            pai.r[posFilho - 1].regPtr =
+                irmaoEsq.r[irmaoEsq.n - 1].regPtr;
+
+            filho.n++;
+            irmaoEsq.n--;
+
+            irmaoEsq.r[irmaoEsq.n].id = -1;
+            irmaoEsq.r[irmaoEsq.n].regPtr = -1;
+            irmaoEsq.p[irmaoEsq.n + 1] = -1L;
+
+            escrevePagina(irmaoEsq);
+            escrevePagina(filho);
+            escrevePagina(pai);
+
+            return;
+        }
+    }
+
+    // 2. TENTA PEGAR UMA CHAVE DO IRMÃO DIREITO
+
+    if (posFilho < pai.n) {
+
+        Pagina irmaoDir = lePagina(pai.p[posFilho + 1]);
+
+        if (irmaoDir.n > this.m) {
+
+            // Chave do pai desce para o final do filho
+            filho.r[filho.n].id = pai.r[posFilho].id;
+            filho.r[filho.n].regPtr = pai.r[posFilho].regPtr;
+
+            // Primeiro ponteiro do irmão direito passa para o filho
+            filho.p[filho.n + 1] = irmaoDir.p[0];
+
+            filho.n++;
+
+            // Primeira chave do irmão direito sobe
+            pai.r[posFilho].id = irmaoDir.r[0].id;
+            pai.r[posFilho].regPtr = irmaoDir.r[0].regPtr;
+
+            // Desloca as chaves do irmão direito
+            for (int j = 0; j < irmaoDir.n - 1; j++) {
+                irmaoDir.r[j].id = irmaoDir.r[j + 1].id;
+                irmaoDir.r[j].regPtr = irmaoDir.r[j + 1].regPtr;
+            }
+
+            // Desloca os ponteiros
+            for (int j = 0; j < irmaoDir.n; j++) {
+                irmaoDir.p[j] = irmaoDir.p[j + 1];
+            }
+
+            irmaoDir.n--;
+
+            irmaoDir.r[irmaoDir.n].id = -1;
+            irmaoDir.r[irmaoDir.n].regPtr = -1;
+            irmaoDir.p[irmaoDir.n + 1] = -1L;
+
+            escrevePagina(irmaoDir);
+            escrevePagina(filho);
+            escrevePagina(pai);
+
+            return;
+        }
+    }
+
+    // 3. NÃO FOI POSSÍVEL REDISTRIBUIR
+    // -> FUSÃO
+
+    if (posFilho > 0) {
+
+        // Fusão com o irmão esquerdo
+
+        Pagina irmaoEsq = lePagina(pai.p[posFilho - 1]);
+
+        int base = irmaoEsq.n;
+
+        // Chave separadora do pai desce
+        irmaoEsq.r[base].id =
+            pai.r[posFilho - 1].id;
+
+        irmaoEsq.r[base].regPtr =
+            pai.r[posFilho - 1].regPtr;
+
+        irmaoEsq.p[base + 1] = filho.p[0];
+
+        irmaoEsq.n++;
+
+        // Copia todas as chaves do filho
+        for (int j = 0; j < filho.n; j++) {
+
+            irmaoEsq.r[irmaoEsq.n].id =
+                filho.r[j].id;
+
+            irmaoEsq.r[irmaoEsq.n].regPtr =
+                filho.r[j].regPtr;
+
+            irmaoEsq.p[irmaoEsq.n + 1] =
+                filho.p[j + 1];
+
+            irmaoEsq.n++;
+        }
+
+        // Remove do pai a chave separadora e o ponteiro do filho
+        removeDoPai(pai, posFilho - 1);
+
+        escrevePagina(irmaoEsq);
+        escrevePagina(pai);
+
+    } else {
+
+        // Fusão com o irmão direito
+
+        Pagina irmaoDir = lePagina(pai.p[posFilho + 1]);
+
+        int base = filho.n;
+
+        // Chave separadora do pai desce
+        filho.r[base].id =
+            pai.r[posFilho].id;
+
+        filho.r[base].regPtr =
+            pai.r[posFilho].regPtr;
+
+        filho.p[base + 1] = irmaoDir.p[0];
+
+        filho.n++;
+
+        // Copia o irmão direito inteiro
+        for (int j = 0; j < irmaoDir.n; j++) {
+
+            filho.r[filho.n].id =
+                irmaoDir.r[j].id;
+
+            filho.r[filho.n].regPtr =
+                irmaoDir.r[j].regPtr;
+
+            filho.p[filho.n + 1] =
+                irmaoDir.p[j + 1];
+
+            filho.n++;
+        }
+
+        // Remove a chave separadora do pai
+        removeDoPai(pai, posFilho);
+
+        escrevePagina(filho);
+        escrevePagina(pai);
+    }
+  }
+
+private void removeDoPai(Pagina pai, int posChave) {
+
+    // Desloca as chaves.
+    for (int j = posChave; j < pai.n - 1; j++) {
+
+        pai.r[j].id =
+            pai.r[j + 1].id;
+
+        pai.r[j].regPtr =
+            pai.r[j + 1].regPtr;
+    }
+
+    // Remove o ponteiro à direita da chave.
+    for (int j = posChave + 1; j < pai.n; j++) {
+        pai.p[j] = pai.p[j + 1];
+    }
+
+    pai.n--;
+
+    pai.r[pai.n].id = -1;
+    pai.r[pai.n].regPtr = -1;
+    pai.p[pai.n + 1] = -1L;
+  }
+
 }
