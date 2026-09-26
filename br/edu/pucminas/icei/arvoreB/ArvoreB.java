@@ -310,4 +310,127 @@ class ArvoreB {
 }
 
 
+private void remove(int id, long endAp,
+                    boolean[] diminuiu,
+                    boolean[] encontrou) throws IOException {
+
+    if (endAp == -1L) {
+        diminuiu[0] = false;
+        encontrou[0] = false;
+        return;
+    }
+
+    Pagina ap = lePagina(endAp);
+
+    // Descobre a primeira posição cuja chave é >= id.
+    int i = 0;
+
+    while (i < ap.n && id > ap.r[i].id) {
+        i++;
+    }
+    
+    // CASO 1: encontramos a chave nesta página
+
+    if (i < ap.n && id == ap.r[i].id) {
+
+        encontrou[0] = true;
+
+        // CASO A página é folha
+
+        if (ap.p[0] == -1L) {
+
+            removeDaPagina(ap, i);
+
+            escrevePagina(ap);
+
+            // Se a página ficou abaixo do mínimo
+            diminuiu[0] =
+                (ap.endereco != this.enderecoRaiz && ap.n < this.m);
+
+            return;
+        }
+
+        
+        // CASO A página é interna
+        // Substituímos a chave pelo predecessor
+
+        long endPred = ap.p[i];
+
+        Pagina pred = lePagina(endPred);
+
+        while (pred.p[pred.n] != -1L) {
+            endPred = pred.p[pred.n];
+            pred = lePagina(endPred);
+        }
+
+        Item predecessor = pred.r[pred.n - 1];
+
+        // Copia o predecessor para a posição da chave removida.
+        ap.r[i].id = predecessor.id;
+        ap.r[i].regPtr = predecessor.regPtr;
+
+        escrevePagina(ap);
+
+        boolean[] diminuiuFilho = new boolean[1];
+        boolean[] encontrouPred = new boolean[1];
+
+        remove(
+            predecessor.id,
+            ap.p[i],
+            diminuiuFilho,
+            encontrouPred
+        );
+
+        if (diminuiuFilho[0]) {
+            ap = lePagina(endAp);
+
+            corrigeUnderflow(ap, i);
+
+            ap = lePagina(endAp);
+
+            diminuiu[0] =
+                (ap.endereco != this.enderecoRaiz && ap.n < this.m);
+        } else {
+            diminuiu[0] = false;
+        }
+
+        return;
+    }
+
+    // CASO 2: chave não está nesta página
+  
+    // Se é folha, então a chave não existe.
+    if (ap.p[0] == -1L) {
+        encontrou[0] = false;
+        diminuiu[0] = false;
+        return;
+    }
+
+    // A posição i também indica qual filho devemos visitar.
+    long endFilho = ap.p[i];
+
+    remove(id, endFilho, diminuiu, encontrou);
+
+    // Se nem encontramos a chave, não há nada para corrigir.
+    if (!encontrou[0]) {
+        diminuiu[0] = false;
+        return;
+    }
+   
+    // O filho ficou abaixo do mínimo.
+    // Precisamos redistribuir ou fundir.
+
+    if (diminuiu[0]) {
+
+        ap = lePagina(endAp);
+
+        corrigeUnderflow(ap, i);
+
+        ap = lePagina(endAp);
+
+        diminuiu[0] =
+            (ap.endereco != this.enderecoRaiz && ap.n < this.m);
+    }
+}
+
 }
