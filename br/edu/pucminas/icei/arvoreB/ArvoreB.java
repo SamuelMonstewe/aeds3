@@ -280,4 +280,34 @@ class ArvoreB {
     ap.p[k + 2] = endApDir;
     ap.n++;
   }
+
+
+  public void remove(int id) throws IOException {
+    if (this.enderecoRaiz == -1L) {
+        System.out.println("Erro: Árvore vazia");
+        return;
+    }
+
+    boolean[] diminuiu = new boolean[1];
+    boolean[] encontrou = new boolean[1];
+
+    remove(id, this.enderecoRaiz, diminuiu, encontrou);
+
+    if (!encontrou[0]) {
+        System.out.println("Erro: Chave não encontrada");
+        return;
+    }
+
+    // A raiz pode ficar sem nenhuma chave após uma fusão
+    Pagina raiz = lePagina(this.enderecoRaiz);
+
+    if (raiz.n == 0) {
+        // Se possuía um filho, esse filho vira a nova raiz
+        // Se não possuía, a árvore ficou vazia
+        this.enderecoRaiz = raiz.p[0];
+        atualizarCabecalhoRaiz();
+    }
+}
+
+
 }
