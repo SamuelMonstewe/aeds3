@@ -307,7 +307,9 @@ class ArvoreB {
         this.enderecoRaiz = raiz.p[0];
         atualizarCabecalhoRaiz();
     }
-}
+
+  }
+
 
 
 private void remove(int id, long endAp,
@@ -637,6 +639,30 @@ private void corrigeUnderflow(Pagina pai, int posFilho)
         escrevePagina(filho);
         escrevePagina(pai);
     }
-}
+  }
+
+private void removeDoPai(Pagina pai, int posChave) {
+
+    // Desloca as chaves.
+    for (int j = posChave; j < pai.n - 1; j++) {
+
+        pai.r[j].id =
+            pai.r[j + 1].id;
+
+        pai.r[j].regPtr =
+            pai.r[j + 1].regPtr;
+    }
+
+    // Remove o ponteiro à direita da chave.
+    for (int j = posChave + 1; j < pai.n; j++) {
+        pai.p[j] = pai.p[j + 1];
+    }
+
+    pai.n--;
+
+    pai.r[pai.n].id = -1;
+    pai.r[pai.n].regPtr = -1;
+    pai.p[pai.n + 1] = -1L;
+  }
 
 }
