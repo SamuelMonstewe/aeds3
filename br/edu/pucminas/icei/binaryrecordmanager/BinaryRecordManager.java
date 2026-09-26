@@ -13,16 +13,20 @@ import java.util.Scanner;
 
 import br.edu.pucminas.icei.livro.*;
 import br.edu.pucminas.icei.pair.Pair;
+import br.edu.pucminas.icei.Item.Item;
+import br.edu.pucminas.icei.arvoreB.*;
 
 public class BinaryRecordManager {
   public String FILE;
+  private ArvoreB indexId;
 
   public BinaryRecordManager() {
 
   }
 
-  public BinaryRecordManager(String f) {
+  public BinaryRecordManager(ArvoreB indexId, String f) {
     FILE = f;
+    this.indexId = indexId;
   }
 
   /*
@@ -93,18 +97,24 @@ public class BinaryRecordManager {
   public void reconstruirIndice() {
     File arquivoBinario = new File(FILE);
 
-    try (RandomAccessFile raf = new RandomAccessFile(arquivoBinario, "rw")) {
+    try (RandomAccessFile raf = new RandomAccessFile(arquivoBinario, "r")) {
       raf.seek(4);
 
       while (raf.getFilePointer() < raf.length()) {
         long posInicioRegistro = raf.getFilePointer();
         int tamanhoRegistro = raf.readInt();
-        byte[] bytes = new byte[tamanhoRegistro];
-        raf.readFully(bytes);
 
-        Livro livro = new Livro();
-        livro.fromByteArray(bytes);
+        boolean lapide = raf.readBoolean();
+        int idLivro = raf.readInt();
 
+        if (!lapide) {
+          Item item = new Item();
+          item.regPtr = posInicioRegistro;
+          item.id = idLivro;
+
+          indexId.insere(item);
+        }
+        raf.seek(posInicioRegistro + 4 + tamanhoRegistro);
       }
 
     } catch (IOException e) {
@@ -112,6 +122,39 @@ public class BinaryRecordManager {
           .println("Erro em BinaryRecordManager - reconstruirIndice: Erro na leitura do arquivo -> " + e.getMessage());
     }
 
+  }
+
+  public Optional<Pair> buscarViaIndice(int id) {
+    Item itemBusca = new Item();
+    itemBusca.id = id;
+
+    Item resultado = indexId.pesquisa(itemBusca);
+
+    if (resultado == null) {
+      return Optional.empty();
+    }
+
+    long enderecoFisico = resultado.regPtr;
+
+    File arquivoBinario = new File(FILE);
+
+    try (RandomAccessFile raf = new RandomAccessFile(arquivoBinario, "r")) {
+      raf.seek(enderecoFisico);
+      int tamanhoRegistro = raf.readInt();
+
+      byte[] bytes = new byte[tamanhoRegistro];
+      raf.readFully(bytes);
+
+      Livro livro = new Livro();
+      livro.fromByteArray(bytes);
+
+      return Optional.of(new Pair(livro, enderecoFisico));
+
+    } catch (IOException e) {
+      System.err.println("Erro em BinaryRecordManager - buscarViaIndice: " + e.getMessage());
+    }
+
+    return Optional.empty();
   }
 
   public void insert(Livro livro) {

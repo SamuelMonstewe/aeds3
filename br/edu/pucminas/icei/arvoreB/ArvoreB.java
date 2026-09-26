@@ -2,13 +2,9 @@ package br.edu.pucminas.icei.arvoreB;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import br.edu.pucminas.icei.Item.*;
 
-class Item {
-  int id;
-  long regPtr;
-}
-
-class ArvoreB {
+public class ArvoreB {
   private RandomAccessFile arquivoIndice;
   long enderecoRaiz;
   int m, mm;
@@ -35,19 +31,21 @@ class ArvoreB {
   }
 
   // Construtor modificado para abrir o arquivo e ler o cabeçalho
-  public ArvoreB(int m, String caminhoArquivo) throws IOException {
-    this.m = m;
-    this.mm = 2 * m;
-    this.arquivoIndice = new RandomAccessFile(caminhoArquivo, "rw");
+  public ArvoreB(int m, String caminhoArquivo) {
+    try {
+      this.arquivoIndice = new RandomAccessFile(caminhoArquivo, "rw");
+      this.m = m;
+      this.mm = 2 * m;
 
-    if (this.arquivoIndice.length() < 8) {
-      // Arquivo novo: Inicializa o cabeçalho (raiz = -1 indica árvore vazia)
-      this.enderecoRaiz = -1;
-      atualizarCabecalhoRaiz();
-    } else {
-      // Arquivo já existe: lê o endereço da raiz
-      this.arquivoIndice.seek(0);
-      this.enderecoRaiz = this.arquivoIndice.readLong();
+      if (this.arquivoIndice.length() < 8) {
+        this.enderecoRaiz = -1;
+        atualizarCabecalhoRaiz();
+      } else {
+        this.arquivoIndice.seek(0);
+        this.enderecoRaiz = this.arquivoIndice.readLong();
+      }
+    } catch (IOException e) {
+      throw new RuntimeException("Falha crítica ao inicializar o arquivo de índice da Árvore B.", e);
     }
   }
 
@@ -97,8 +95,12 @@ class ArvoreB {
     arquivoIndice.writeLong(this.enderecoRaiz);
   }
 
-  public Item pesquisa(Item reg) throws IOException {
-    return this.pesquisa(reg, this.enderecoRaiz);
+  public Item pesquisa(Item reg) {
+    try {
+      return this.pesquisa(reg, this.enderecoRaiz);
+    } catch (IOException e) {
+      throw new RuntimeException("Erro de I/O na Árvore B ao tentar pesquisar a chave: " + reg.id, e);
+    }
   }
 
   private Item pesquisa(Item reg, long offsetPagina) throws IOException {
@@ -121,21 +123,26 @@ class ArvoreB {
     }
   }
 
-  public void insere(Item reg) throws IOException {
+  public void insere(Item reg) {
     Item regRetorno[] = new Item[1];
     boolean cresceu[] = new boolean[1];
-    long endApRetorno = this.insere(reg, this.enderecoRaiz, regRetorno, cresceu);
 
-    if (cresceu[0]) {
-      Pagina novaRaiz = new Pagina(this.mm);
-      novaRaiz.r[0] = regRetorno[0];
-      novaRaiz.p[0] = this.enderecoRaiz;
-      novaRaiz.p[1] = endApRetorno;
-      novaRaiz.n = 1;
+    try {
+      long endApRetorno = this.insere(reg, this.enderecoRaiz, regRetorno, cresceu);
 
-      escrevePagina(novaRaiz);
-      this.enderecoRaiz = novaRaiz.endereco;
-      atualizarCabecalhoRaiz();
+      if (cresceu[0]) {
+        Pagina novaRaiz = new Pagina(this.mm);
+        novaRaiz.r[0] = regRetorno[0];
+        novaRaiz.p[0] = this.enderecoRaiz;
+        novaRaiz.p[1] = endApRetorno;
+        novaRaiz.n = 1;
+
+        escrevePagina(novaRaiz);
+        this.enderecoRaiz = novaRaiz.endereco;
+        atualizarCabecalhoRaiz();
+      }
+    } catch (IOException e) {
+      throw new RuntimeException("Erro de I/O na Árvore B ao tentar inserir a chave: " + reg.id, e);
     }
   }
 
@@ -221,49 +228,54 @@ class ArvoreB {
 
     long endFilho = (reg.id < ap.r[i].id) ? ap.p[i] : ap.p[i + 1];
 
-    long endApRetorno = insere(reg, endFilho, regRetorno, cresceu);
+    try {
+      long endApRetorno = insere(reg, endFilho, regRetorno, cresceu);
 
-    if (cresceu[0]) {
-      // a página tem espaço?
-      if (ap.n < this.mm) {
-        insereNaPagina(ap, regRetorno[0], endApRetorno);
-        escrevePagina(ap);
-        cresceu[0] = false;
-        return ap.endereco;
-      } else {
-        // se não tiver espaço, precisamos fazer o split
-        Pagina apTemp = new Pagina(this.mm); // (irmã) [ vazio | vazio | vazio | vazio ]
-        apTemp.p[0] = -1L;
-
-        // se i <= this.m, significa que o novo registro pertence a metade esquerda
-        // (página original ap)
-        if (i <= this.m) {
-          insereNaPagina(apTemp, ap.r[this.mm - 1], ap.p[this.mm]);
-          ap.n--;
+      if (cresceu[0]) {
+        // a página tem espaço?
+        if (ap.n < this.mm) {
           insereNaPagina(ap, regRetorno[0], endApRetorno);
+          escrevePagina(ap);
+          cresceu[0] = false;
+          return ap.endereco;
         } else {
-          insereNaPagina(apTemp, regRetorno[0], endApRetorno);
+          // se não tiver espaço, precisamos fazer o split
+          Pagina apTemp = new Pagina(this.mm); // (irmã) [ vazio | vazio | vazio | vazio ]
+          apTemp.p[0] = -1L;
+
+          // se i <= this.m, significa que o novo registro pertence a metade esquerda
+          // (página original ap)
+          if (i <= this.m) {
+            insereNaPagina(apTemp, ap.r[this.mm - 1], ap.p[this.mm]);
+            ap.n--;
+            insereNaPagina(ap, regRetorno[0], endApRetorno);
+          } else {
+            insereNaPagina(apTemp, regRetorno[0], endApRetorno);
+          }
+
+          for (int j = this.m + 1; j < this.mm; j++) {
+            insereNaPagina(apTemp, ap.r[j], ap.p[j + 1]);
+            ap.p[j + 1] = -1L;
+          }
+
+          ap.n = this.m;// A página original agora fica só com metade dos registros
+          apTemp.p[0] = ap.p[this.m + 1];
+          ap.p[this.m + 1] = -1L;
+
+          regRetorno[0] = ap.r[this.m]; // O item do MEIO é escolhido para subir!
+
+          escrevePagina(apTemp);
+          escrevePagina(ap);
+
+          return apTemp.endereco;
         }
-
-        for (int j = this.m + 1; j < this.mm; j++) {
-          insereNaPagina(apTemp, ap.r[j], ap.p[j + 1]);
-          ap.p[j + 1] = -1L;
-        }
-
-        ap.n = this.m;// A página original agora fica só com metade dos registros
-        apTemp.p[0] = ap.p[this.m + 1];
-        ap.p[this.m + 1] = -1L;
-
-        regRetorno[0] = ap.r[this.m]; // O item do MEIO é escolhido para subir!
-
-        escrevePagina(apTemp);
-        escrevePagina(ap);
-
-        return apTemp.endereco;
       }
+
+      return ap.endereco;
+    } catch (IOException e) {
+      throw new RuntimeException("Erro crítico na árvore B ao inserir a chave " + reg.id, e);
     }
 
-    return ap.endereco;
   }
 
   private void insereNaPagina(Pagina ap, Item reg, long endApDir) {

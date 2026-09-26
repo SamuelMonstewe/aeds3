@@ -26,7 +26,9 @@ public class GUI {
       System.out.println("5 - Deletar livro");
       System.out.println("6 - Listar registros");
       System.out.println("7 - Ordenacao externa");
-      // System.out.println("8 - Debugar arquivos temporários");
+      System.out.println("8 - Montar Índice");
+      System.out.println("9 - Buscar Registro por indexação");
+
       System.out.println("0 - Sair");
       System.out.print("Opcao: ");
 
@@ -54,6 +56,7 @@ public class GUI {
           int id = sc.nextInt();
           sc.nextLine();
 
+          long inicio = System.currentTimeMillis();
           Optional<Pair> resultado = manager.find(id);
 
           if (resultado.isPresent()) {
@@ -61,7 +64,9 @@ public class GUI {
           } else {
             System.out.println("Livro nao encontrado.");
           }
-
+          long fim = System.currentTimeMillis();
+          long tempoFinal = fim - inicio;
+          System.out.println("Tempo de consulta: " + tempoFinal + " ms");
           break;
         }
 
@@ -107,12 +112,28 @@ public class GUI {
           manager.finalizarReorganizacao();
           break;
 
-        // case 8:
-        // manager.verificarArquivoTemporario("temp1.bin");
-        // manager.verificarArquivoTemporario("temp2.bin");
-        // manager.verificarArquivoTemporario("temp3.bin");
-        // manager.verificarArquivoTemporario("temp4.bin");
-        // break;
+        case 8:
+          manager.reconstruirIndice();
+          System.out.println("Arquivo de índice construído!");
+        case 9:
+          System.out.print("ID do livro: ");
+          int id = sc.nextInt();
+          sc.nextLine();
+
+          long ini = System.currentTimeMillis();
+          Optional<Pair> opt = manager.buscarViaIndice(id);
+
+          if (opt.isEmpty()) {
+            System.out.println("Registro com o id: " + id + " não existe!");
+          } else {
+            opt.get().livro.exibirDetalhes();
+          }
+          long fim = System.currentTimeMillis();
+          long tempoFinal = fim - ini;
+
+          System.out.println("Tempo de consulta: " + tempoFinal + " ms");
+
+          break;
         case 0:
           System.out.println("Encerrando...");
           break;
