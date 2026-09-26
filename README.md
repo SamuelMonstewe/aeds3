@@ -25,7 +25,9 @@ aeds3/
 │               ├── binaryrecordmanager/
 │               │   └── BinaryRecordManager.java # package br.edu.pucminas.icei.binaryrecordmanager;
 │               └── gui/
-│                   └── GUI.java                # package br.edu.pucminas.icei.gui;
+│               │   └── GUI.java                # package br.edu.pucminas.icei.gui;
+│               └── arvoreB/
+│                   └── arvoreB.java            # package br.edu.pucminas.icei.arvoreB;
 ```
 ## 2. Instruções de Compilação e Execução
 
