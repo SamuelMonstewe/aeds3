@@ -1,6 +1,3 @@
-import java.io.IOException;
-import java.io.RandomAccessFile;
-
 import br.edu.pucminas.icei.binaryrecordmanager.*;
 import br.edu.pucminas.icei.gui.*;
 import br.edu.pucminas.icei.arvoreB.*;
