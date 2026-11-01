@@ -928,4 +928,22 @@ public class BinaryRecordManager {
   public void descomprimirViaHuffman() {
     Huffman.expand();
   }
+
+  public double obterTaxaCompressao(String arquivoOriginal, String arquivoComprimido) {
+    long tamanhoA = 0;
+    long tamanhoB = 0;
+    try (RandomAccessFile rafA = new RandomAccessFile(arquivoOriginal, "r");
+        RandomAccessFile rafB = new RandomAccessFile(arquivoComprimido, "r")) {
+
+      tamanhoA = rafA.length();
+      tamanhoB = rafB.length();
+
+    } catch (IOException e) {
+      System.out.println(
+          "Erro em BinaryRecordManager - obterTaxaCompressao erro ao ler o arquivo: " + e.getMessage());
+      e.printStackTrace();
+    }
+
+    return ((double) tamanhoA - tamanhoB) / tamanhoA * 100;
+  }
 }

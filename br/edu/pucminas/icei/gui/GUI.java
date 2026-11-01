@@ -32,6 +32,8 @@ public class GUI {
       System.out.println("11 - Deletar Registro Por Indexação");
       System.out.println("12 - Compactar via Huffman");
       System.out.println("13 - Descomprimir via Huffman");
+      System.out.println(
+          "14 - Obter taxa de compressão via Huffaman (CERTIFIQUE-SE QUE JÁ DESCOMPRIMIU O ARQUIVO - OPÇÃO 13)");
 
       System.out.println("0 - Sair");
       System.out.print("Opcao: ");
@@ -211,6 +213,12 @@ public class GUI {
         }
         case 13: {
           manager.descomprimirViaHuffman();
+          break;
+        }
+        case 14: {
+          double t = manager.obterTaxaCompressao("db.bin", "dbHuffmanCompressao.bin.huf");
+          System.out.printf("Porcentagem de ganho: %.2f%n", t);
+
           break;
         }
         case 0:
