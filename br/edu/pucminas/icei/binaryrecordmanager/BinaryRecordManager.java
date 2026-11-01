@@ -15,6 +15,7 @@ import br.edu.pucminas.icei.livro.*;
 import br.edu.pucminas.icei.pair.Pair;
 import br.edu.pucminas.icei.Item.Item;
 import br.edu.pucminas.icei.arvoreB.*;
+import br.edu.pucminas.icei.trie.*;
 
 public class BinaryRecordManager {
   public String FILE;
@@ -341,8 +342,8 @@ public class BinaryRecordManager {
     return Optional.empty();
   }
 
-  public void read(int limiteLeitura) {
-    File arquivoBinario = new File(FILE);
+  public void read(int limiteLeitura, String arquivo) {
+    File arquivoBinario = new File(arquivo);
 
     try (RandomAccessFile raf = new RandomAccessFile(arquivoBinario, "r")) {
       if (raf.length() == 0) {
@@ -354,7 +355,7 @@ public class BinaryRecordManager {
 
       int i = 0;
 
-      while (i < limiteLeitura && raf.getFilePointer() < raf.length()) {
+      while (raf.getFilePointer() < raf.length() && i < limiteLeitura) {
         int tamanhoRegistro = raf.readInt();
         byte[] bytes = new byte[tamanhoRegistro];
 
@@ -918,5 +919,13 @@ public class BinaryRecordManager {
           "EErro em BinaryRecordManager - verificarArquivoTemporario erro ao ler o arquivo: " + e.getMessage());
       e.printStackTrace();
     }
+  }
+
+  public void comprimirViaHuffman() {
+    Huffman.compress(FILE);
+  }
+
+  public void descomprimirViaHuffman() {
+    Huffman.expand();
   }
 }

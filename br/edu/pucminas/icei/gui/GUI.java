@@ -30,6 +30,8 @@ public class GUI {
       System.out.println("9 - Buscar Registro por indexação");
       System.out.println("10 - Atualizar Registro por Indexação");
       System.out.println("11 - Deletar Registro Por Indexação");
+      System.out.println("12 - Compactar via Huffman");
+      System.out.println("13 - Descomprimir via Huffman");
 
       System.out.println("0 - Sair");
       System.out.print("Opcao: ");
@@ -119,7 +121,7 @@ public class GUI {
           int quantidade = sc.nextInt();
           sc.nextLine();
 
-          manager.read(quantidade);
+          manager.read(quantidade, "db.bin");
           break;
         }
 
@@ -203,7 +205,14 @@ public class GUI {
 
           break;
         }
-
+        case 12: {
+          manager.comprimirViaHuffman();
+          break;
+        }
+        case 13: {
+          manager.descomprimirViaHuffman();
+          break;
+        }
         case 0:
           System.out.println("Encerrando...");
           break;
