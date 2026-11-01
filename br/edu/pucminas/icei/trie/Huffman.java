@@ -6,6 +6,11 @@ import java.util.PriorityQueue;
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 
+/* ================================================================= 
+ *  COMPACTAÇÃO VIA HUFFMAN UTILIZANDO SEDGEWICK COMO REFERÊNCIA
+ * =================================================================
+ */
+
 public class Huffman {
   private static int R = 256; // ASCII
 
