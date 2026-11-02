@@ -1,4 +1,4 @@
-package br.edu.pucminas.icei.trie;
+package br.edu.pucminas.icei.huffman;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;

@@ -15,7 +15,7 @@ import br.edu.pucminas.icei.livro.*;
 import br.edu.pucminas.icei.pair.Pair;
 import br.edu.pucminas.icei.Item.Item;
 import br.edu.pucminas.icei.arvoreB.*;
-import br.edu.pucminas.icei.trie.*;
+import br.edu.pucminas.icei.huffman.*;
 
 public class BinaryRecordManager {
   public String FILE;
