@@ -16,6 +16,7 @@ import br.edu.pucminas.icei.pair.Pair;
 import br.edu.pucminas.icei.Item.Item;
 import br.edu.pucminas.icei.arvoreB.*;
 import br.edu.pucminas.icei.huffman.*;
+import br.edu.pucminas.icei.casamentopadroes.PesquisaPadrao;
 
 public class BinaryRecordManager {
   public String FILE;
@@ -927,6 +928,10 @@ public class BinaryRecordManager {
 
   public void descomprimirViaHuffman() {
     Huffman.expand();
+  }
+
+  public PesquisaPadrao.Relatorio buscarPadrao(String padrao, PesquisaPadrao.Campo campo) throws IOException {
+    return new PesquisaPadrao(FILE).pesquisar(padrao, campo);
   }
 
   public double obterTaxaCompressao(String arquivoOriginal, String arquivoComprimido) {

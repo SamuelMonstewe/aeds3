@@ -1,6 +1,7 @@
 package br.edu.pucminas.icei.gui;
 
 import java.io.File;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.Scanner;
@@ -8,6 +9,7 @@ import java.util.Scanner;
 import br.edu.pucminas.icei.livro.Livro;
 import br.edu.pucminas.icei.binaryrecordmanager.BinaryRecordManager;
 import br.edu.pucminas.icei.pair.*;
+import br.edu.pucminas.icei.casamentopadroes.PesquisaPadrao;
 
 public class GUI {
 
@@ -35,6 +37,7 @@ public class GUI {
       System.out.println(
           "14 - Obter taxa de compressão via Huffaman (CERTIFIQUE-SE QUE JÁ DESCOMPRIMIU O ARQUIVO - OPÇÃO 13)");
 
+      System.out.println("15 - Casamento de padroes (KMP x Boyer-Moore)");
       System.out.println("0 - Sair");
       System.out.print("Opcao: ");
 
@@ -219,6 +222,32 @@ public class GUI {
           double t = manager.obterTaxaCompressao("db.bin", "dbHuffmanCompressao.bin.huf");
           System.out.printf("Porcentagem de ganho: %.2f%n", t);
 
+          break;
+        }case 15: {
+          System.out.print("Padrao a pesquisar: ");
+          String padrao = sc.nextLine();
+          System.out.println("Campo da busca: 1 - Titulo | 2 - Autor | 3 - Generos | 4 - Todos");
+          System.out.print("Escolha: ");
+          String entrada = sc.nextLine().trim();
+          PesquisaPadrao.Campo campo = null;
+          switch (entrada) {
+            case "1": campo = PesquisaPadrao.Campo.TITULO; break;
+            case "2": campo = PesquisaPadrao.Campo.AUTOR; break;
+            case "3": campo = PesquisaPadrao.Campo.GENEROS; break;
+            case "4": campo = PesquisaPadrao.Campo.TODOS; break;
+            default:
+              System.out.println("Campo invalido. Nenhuma pesquisa realizada.");
+              break;
+          }
+          if (campo == null) {
+            break;
+          }
+          //Executa os dois algoritmos sobre os mesmos campos e registros
+          try {
+            manager.buscarPadrao(padrao, campo).exibir();
+          } catch (IOException | IllegalArgumentException e) {
+            System.out.println("Falha ao pesquisar: " + e.getMessage());
+          }
           break;
         }
         case 0:
