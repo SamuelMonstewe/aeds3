@@ -28,6 +28,13 @@ aeds3/
 │               │   └── GUI.java                # package br.edu.pucminas.icei.gui;
 │               └── arvoreB/
 │                   └── arvoreB.java            # package br.edu.pucminas.icei.arvoreB;
+│               └── casamentopadroes/
+│                    └── BooyerMoore.java
+│                    └── KMP.java
+│                    └── PesquisaPadrao.java
+│                    └── ResultadoCasamento.java
+                └── huffman/
+                     └── Huffman.java
 ```
 ## 2. Instruções de Compilação e Execução
 
